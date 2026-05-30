@@ -1,0 +1,23 @@
+[project]
+name = "fastapi-boliertemplate"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "John Olatubosun",email = "toluolatubosun@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi[standard] (>=0.136.1,<0.137.0)",
+    "boto3 (>=1.43.7,<2.0.0)",
+    "celery (>=5.6.3,<6.0.0)",
+    "redis (>=7.4.0,<8.0.0)",
+    "sqlmodel (>=0.0.38,<0.0.39)",
+    "psycopg2-binary (>=2.9.12,<3.0.0)",
+    "alembic (>=1.18.4,<2.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

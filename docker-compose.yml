@@ -1,0 +1,181 @@
+x-postgres-defaults: &postgres-defaults
+    image: postgres:15.6
+    healthcheck:
+        test: ["CMD", "pg_isready", "-U", "postgres"]
+        interval: 15s
+        timeout: 10s
+        retries: 5
+
+x-postgres-env: &postgres-env
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: password
+
+services:
+    shard_0:
+        <<: *postgres-defaults
+        environment:
+            <<: *postgres-env
+            POSTGRES_DB: shard_0
+        ports:
+            - "5440:5432"
+        volumes:
+            - shard_0_data:/var/lib/postgresql/data
+
+    pgweb_shard_0:
+        image: sosedoff/pgweb:latest
+        ports:
+            - "8081:8081"
+        environment:
+            DATABASE_URL: postgresql://postgres:password@shard_0:5432/shard_0?sslmode=disable
+        depends_on:
+            shard_0:
+                condition: service_healthy
+
+    shard_1:
+        <<: *postgres-defaults
+        environment:
+            <<: *postgres-env
+            POSTGRES_DB: shard_1
+        ports:
+            - "5441:5432"
+        volumes:
+            - shard_1_data:/var/lib/postgresql/data
+
+    pgweb_shard_1:
+        image: sosedoff/pgweb:latest
+        ports:
+            - "8082:8081"
+        environment:
+            DATABASE_URL: postgresql://postgres:password@shard_1:5432/shard_1?sslmode=disable
+        depends_on:
+            shard_1:
+                condition: service_healthy
+
+    shard_2:
+        <<: *postgres-defaults
+        environment:
+            <<: *postgres-env
+            POSTGRES_DB: shard_2
+        ports:
+            - "5442:5432"
+        volumes:
+            - shard_2_data:/var/lib/postgresql/data
+
+    pgweb_shard_2:
+        image: sosedoff/pgweb:latest
+        ports:
+            - "8083:8081"
+        environment:
+            DATABASE_URL: postgresql://postgres:password@shard_2:5432/shard_2?sslmode=disable
+        depends_on:
+            shard_2:
+                condition: service_healthy
+
+    global_db:
+        <<: *postgres-defaults
+        environment:
+            <<: *postgres-env
+            POSTGRES_DB: global
+        ports:
+            - "5443:5432"
+        volumes:
+            - global_data:/var/lib/postgresql/data
+
+    pgweb_global:
+        image: sosedoff/pgweb:latest
+        ports:
+            - "8084:8081"
+        environment:
+            DATABASE_URL: postgresql://postgres:password@global_db:5432/global?sslmode=disable
+        depends_on:
+            global_db:
+                condition: service_healthy
+
+    # Opt-in: only starts when you pass `--profile migration` or name them explicitly. 
+    # The 3-shard demo runs unchanged without these.
+    # This is used for demonstrating how to handle adding a new shard.
+    shard_3:
+        <<: *postgres-defaults
+        profiles: ["migration"]
+        environment:
+            <<: *postgres-env
+            POSTGRES_DB: shard_3
+        ports:
+            - "5444:5432"
+        volumes:
+            - shard_3_data:/var/lib/postgresql/data
+
+    pgweb_shard_3:
+        image: sosedoff/pgweb:latest
+        profiles: ["migration"]
+        ports:
+            - "8085:8081"
+        environment:
+            DATABASE_URL: postgresql://postgres:password@shard_3:5432/shard_3?sslmode=disable
+        depends_on:
+            shard_3:
+                condition: service_healthy
+
+    redis:
+        image: redis:6.2
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 15s
+            timeout: 10s
+            retries: 5
+
+    backend:
+        build:
+            context: .
+            dockerfile: docker/Dockerfile
+        volumes:
+            - .:/app
+        env_file:
+            - .env
+        ports:
+            - "8000:8000"
+        depends_on:
+            redis:
+                condition: service_healthy
+            shard_0:
+                condition: service_healthy
+            shard_1:
+                condition: service_healthy
+            shard_2:
+                condition: service_healthy
+            global_db:
+                condition: service_healthy
+        command: [ "sh", "/app/docker/entrypoint.sh" ]
+
+    celery_worker:
+        build:
+            context: .
+            dockerfile: docker/Dockerfile
+        volumes:
+            - .:/app
+        env_file:
+            - .env
+        depends_on:
+            redis:
+                condition: service_healthy
+            shard_0:
+                condition: service_healthy
+            shard_1:
+                condition: service_healthy
+            shard_2:
+                condition: service_healthy
+            global_db:
+                condition: service_healthy
+        command: celery -A celery_worker worker --loglevel=info
+
+volumes:
+    redis_data:
+    shard_0_data:
+    shard_1_data:
+    shard_2_data:
+    shard_3_data:
+    global_data:
