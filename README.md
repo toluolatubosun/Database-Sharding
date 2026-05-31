@@ -2,7 +2,7 @@
 
 A FastAPI + Postgres sandbox that demonstrates database sharding: global database, consistent hashing, colocation, cross-shard fan-out reads, and online resharding via dual-write.
 
-> A did Deep dive and walkthrough of the various concepts implemented here, [Medium article](). I would recommend reading that first if you're new to database sharding, so the code is more understandable.
+> A did Deep dive and walkthrough of the various concepts implemented here, [Medium article](https://medium.com/@toluolatubosun/the-nuances-of-database-sharding-explained-and-a-production-level-demo-dde6cc55645a). I would recommend reading that first if you're new to database sharding, so the code is more understandable.
 
 ## Quick start
 
